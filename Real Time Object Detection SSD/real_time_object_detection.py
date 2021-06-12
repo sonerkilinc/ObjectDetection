@@ -1,7 +1,7 @@
 # USAGE
 # python C:\Users\user\Desktop\Real-Time-Object-Detection-master\real_time_object_detection.py --prototxt C:\Users\user\Desktop\MobileNetSSD_deploy.prototxt.txt --model C:\Users\user\Desktop\MobileNetSSD_deploy.caffemodel
 
-# import the necessary packages
+
 from imutils.video import VideoStream
 from imutils.video import FPS
 import numpy as np
@@ -10,8 +10,7 @@ import imutils
 import time
 import cv2
 
-# initialize the list of class labels MobileNet SSD was trained to
-# detect, then generate a set of bounding box colors for each class
+
 CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 	"bottle", "bus", "car", "cat","chair", "cow", "diningtable",
 	"dog", "horse", "motorbike", "person", "pottedplant", "sheep",
@@ -20,7 +19,6 @@ COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
 """ bağımsız değişkeni oluşturmak, bağımsız değişkenleri çözümlemek ve ayrıştırmak """
 def agr_parser():
-	"""construct the argument parse and parse the arguments"""
 	ap = argparse.ArgumentParser()
 	ap.add_argument("-p", "--prototxt", required=True,
 		help="path to Caffe 'deploy' prototxt file")
@@ -33,14 +31,11 @@ def agr_parser():
 
 """ serileştirdiğimiz modeli diskten yükledik."""
 def serializing_model(args):
-	"""load our serialized model from disk"""
 	print("[INFO] loading model...")
 	net = cv2.dnn.readNetFromCaffe(args["prototxt"], args["model"])
 	return net
 """video akışını başlatın, kamera sensörünün ısınmasına izin verin ve FPS sayacını başlatın."""
 def initilizing_video_stream():
-	"""initialize the video stream, allow the cammera sensor to warmup,
-	   and initialize the FPS counter"""
 	print("[INFO] starting video stream...")
 	vs = VideoStream(src=0).start()
 	time.sleep(2.0)
@@ -49,8 +44,6 @@ def initilizing_video_stream():
 
 """kareyi akıtılan video akışından alın ve maksimum genişliği 400 piksel olacak şekilde yeniden boyutlandırın. """
 def preprocess_video_frames(vs):
-	"""grab the frame from the threaded video stream and resize it
-	   to have a maximum width of 400 pixels"""
 	frame = vs.read()
 	frame = imutils.resize(frame, width=400)
 
@@ -61,8 +54,6 @@ def preprocess_video_frames(vs):
 
 """blob'u ağ üzerinden geçirin ve tespitleri ve tahminleri alın."""
 def get_detections_from_frames(blob, net):
-	"""pass the blob through the network and obtain the detections and
-	   predictions"""
 	net.setInput(blob)
 	detections = net.forward()
 	return detections
@@ -70,12 +61,7 @@ def get_detections_from_frames(blob, net):
 """"güven" i sağlayarak zayıf tespitleri filtreleyin.
 minimum güvenden daha büyük."""
 def filter_out_detections(args, detections, confidence, key):
-	"""filter out weak detections by ensuring the `confidence` is
-	   greater than the minimum confidence"""
 	if confidence > args["confidence"]:
-		# extract the index of the class label from the
-		# `detections`, then compute the (x, y)-coordinates of
-		# the bounding box for the object
 		idx = int(detections[0, 0, key, 1])
 	else:
 		idx = None
@@ -83,24 +69,19 @@ def filter_out_detections(args, detections, confidence, key):
 
 """Filtrelenmiş algılamalar için sınırlayıcı kutular çizin"""
 def draw_bounding_box(detections, frame, key):
-	"""Draw bounding boxes for the filtered detections"""
-	# grab the frame dimensions
 	(h, w) = frame.shape[:2]
-	# get coordinates for bounding boxes
     #sınırlayıcı kutular için koordinatlar alın
 	box = detections[0, 0, key, 3:7] * np.array([w, h, w, h])
 	return box
 
 """Tespitler için etiket alın"""
 def predict_class_labels(confidence, idx):
-	# Get labels for the detections
 	label = "{}: {:.2f}%".format(CLASSES[idx], confidence * 100)
 	return label
 
 """tahmini çerçeveye çiz"""
 def draw_predictions_on_frames(box, label, frame, idx):
 	(startX, startY, endX, endY) = box.astype("int")
-	# draw the prediction on the frame
 	cv2.rectangle(frame, (startX, startY), (endX, endY), COLORS[idx], 2)
 	y = startY - 15 if startY - 15 > 15 else startY + 15
 	cv2.putText(frame, label, (startX, y),
@@ -109,52 +90,40 @@ def draw_predictions_on_frames(box, label, frame, idx):
 
 
 def main():
-	# Parsing the arguments for real time object detection
     #Gerçek zamanlı nesne tespiti için argümanların ayrıştırılması
 	args = agr_parser()
 
-	# Serializing the pre-trained model
     #Önceden eğitilmiş modeli seri hale getirme
 	net = serializing_model(args)
 
-	# Initializing the video stream as frames (fps - frames per second)
     #Video akışını kare olarak başlatma (fps - saniyedeki kare sayısı)
 	vs, fps = initilizing_video_stream()
 
-	# loop over the frames from the video stream
     #video akışındaki karelerin üzerinden geç
 	while True:
-		# Preprossesing the frames to obtain detections
         #Algılamaları elde etmek için çerçeveleri önceden koruma
 		blob, frame = preprocess_video_frames(vs)
 
-		# Obtaining detections from each frame
         #Her çerçeveden tespitlerin alınması
 		detections = get_detections_from_frames(blob, net)
 		
-		# loop over the detections
         # algılamaların üzerinden geçmek
 		for key in np.arange(0, detections.shape[2]):
-			# extract the confidence associated with the prediction
             #tahminle ilişkili güveni çıkarmak
 			confidence = detections[0, 0, key, 2]
 
-			# filter out weak detections
             # zayıf tespitleri filtreleyin
 			idx = filter_out_detections(args, detections, confidence, key)
 
 			if(idx == None):
 				break
 			else:
-				# Get the bounding boxes for the detections
                 #Algılamalar için sınırlayıcı kutuları alın
 				box = draw_bounding_box(detections, frame, key)
 				
-				# Get predictions for the boxes
                 #Kutular için tahminler alın
 				label = predict_class_labels(confidence, idx)
 
-				# Draw predictions on frames
                 #Çerçevelere tahminler çizin
 				frame = draw_predictions_on_frames(box, label, frame, idx)
 
